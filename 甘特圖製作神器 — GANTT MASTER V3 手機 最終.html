@@ -1,0 +1,2953 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>甘特圖製作神器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #2a2a3a;
+    --accent: #7c6aff;
+    --accent2: #ff6a9a;
+    --accent3: #6affd0;
+    --accent4: #ffb86a;
+    --accent5: #6ab8ff;
+    --text: #e8e8f0;
+    --text-dim: #8888aa;
+    --grid-line: rgba(255,255,255,0.04);
+    --today-line: #ff6a9a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.5;transform:scale(1.3)}
+  }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,255,0.08); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 500;
+  }
+  .btn-primary:hover { background: #9882ff; border-color: #9882ff; color: #fff; }
+  .btn-danger { border-color: #ff4466; color: #ff4466; }
+  .btn-danger:hover { background: rgba(255,68,102,0.1); }
+
+  /* LAYOUT */
+  .app { display: flex; height: calc(100vh - 56px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 300px;
+    min-width: 300px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.18s;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .sidebar-content { flex: 1; overflow-y: auto; padding: 16px; }
+  .sidebar-content::-webkit-scrollbar { width: 4px; }
+  .sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    margin-top: 16px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* FORM */
+  .form-row { margin-bottom: 10px; }
+  label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  input[type=text], input[type=date], select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+  input[type=text]:focus, input[type=date]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  input[type=range] {
+    width: 100%; accent-color: var(--accent);
+  }
+  select option { background: #1a1a2e; }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .color-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .color-swatch {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.selected { border-color: #fff; }
+
+  /* TASK LIST */
+  .task-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+  }
+  .task-item:hover { border-color: var(--accent); }
+  .task-item.selected { border-color: var(--accent); background: rgba(124,106,255,0.08); }
+  .task-item-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .task-item-meta { font-size: 11px; color: var(--text-dim); }
+  .task-color-bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 8px 0 0 8px;
+  }
+  .task-item-actions {
+    position: absolute; right: 8px; top: 50%;
+    transform: translateY(-50%);
+    display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s;
+  }
+  .task-item:hover .task-item-actions { opacity: 1; }
+  .icon-btn {
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    border: none;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: rgba(255,68,102,0.2); color: #ff6688; }
+
+  /* MAIN GANTT AREA */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .gantt-controls {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+
+  .zoom-group { display: flex; gap: 4px; }
+  .zoom-btn {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Mono', monospace;
+  }
+  .zoom-btn:hover, .zoom-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(124,106,255,0.08); }
+
+  .view-label { font-size: 12px; color: var(--text-dim); }
+
+  .gantt-wrapper {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+  .gantt-wrapper::-webkit-scrollbar { height: 8px; width: 8px; }
+  .gantt-wrapper::-webkit-scrollbar-track { background: var(--surface); }
+  .gantt-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  #gantt-container {
+    position: relative;
+    min-width: 100%;
+  }
+
+  /* GANTT HEADER */
+  .gantt-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .gantt-label-col {
+    min-width: 220px;
+    width: 220px;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .gantt-header-label {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .gantt-timeline-header {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .month-row {
+    height: 28px;
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .month-cell {
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .day-row {
+    height: 28px;
+    display: flex;
+  }
+
+  .day-cell {
+    border-right: 1px solid var(--grid-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .day-cell.weekend { color: rgba(255,107,154,0.5); }
+  .day-cell.today-header {
+    background: rgba(255,107,154,0.15);
+    color: var(--accent2);
+    font-weight: 700;
+  }
+
+  /* GANTT ROWS */
+  .gantt-body { position: relative; }
+
+  .gantt-row {
+    display: flex;
+    height: 44px;
+    border-bottom: 1px solid var(--grid-line);
+    transition: background 0.15s;
+  }
+  .gantt-row:hover { background: rgba(255,255,255,0.02); }
+  .gantt-row.selected-row { background: rgba(124,106,255,0.06); }
+
+  .gantt-row-label {
+    min-width: 220px;
+    width: 220px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    flex-shrink: 0;
+    position: sticky;
+    left: 0;
+    background: var(--bg);
+    z-index: 5;
+    gap: 8px;
+  }
+  .gantt-row.selected-row .gantt-row-label { background: rgba(124,106,255,0.1); }
+  .gantt-row:hover .gantt-row-label { background: rgba(255,255,255,0.02); }
+
+  .row-color-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .row-name {
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .row-progress-badge {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .gantt-row-timeline {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  /* GRID LINES */
+  .grid-line-v {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--grid-line);
+    pointer-events: none;
+  }
+  .grid-line-today {
+    background: rgba(255,107,154,0.3);
+    width: 2px;
+    z-index: 4;
+  }
+
+  /* GANTT BARS */
+  .gantt-bar-wrapper {
+    position: absolute;
+    height: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: grab;
+    z-index: 3;
+  }
+  .gantt-bar-wrapper:active { cursor: grabbing; }
+
+  .gantt-bar {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    transition: filter 0.15s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .gantt-bar:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  .gantt-bar-progress {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px 0 0 6px;
+    pointer-events: none;
+  }
+  .gantt-bar-label {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .resize-handle {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 5;
+  }
+  .resize-handle-left {
+    left: 0; right: auto;
+    cursor: ew-resize;
+  }
+
+  /* TODAY LINE */
+  .today-line {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent2), transparent);
+    z-index: 6;
+    pointer-events: none;
+  }
+  .today-line::before {
+    content: 'TODAY';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    white-space: nowrap;
+    letter-spacing: 0.1em;
+  }
+
+  /* DEPENDENCIES */
+  .dep-svg {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* TOOLTIP */
+  .tooltip {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .tooltip.visible { opacity: 1; }
+  .tooltip-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .tooltip-row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-dim); margin-top: 3px; }
+  .tooltip-val { color: var(--text); font-family: 'Space Mono', monospace; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state-text { font-size: 13px; }
+
+  /* STATS BAR */
+  .stats-bar {
+    height: 40px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .stat-item { display: flex; align-items: center; gap: 6px; }
+  .stat-value { color: var(--text); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 480px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ANIMATIONS */
+  .gantt-bar-wrapper {
+    animation: barSlideIn 0.3s ease both;
+  }
+  @keyframes barSlideIn {
+    from { opacity: 0; transform: translateY(calc(-50% + 6px)); }
+    to { opacity: 1; transform: translateY(-50%); }
+  }
+
+  .notice {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 10px;
+    background: rgba(124,106,255,0.08);
+    border-radius: 5px;
+    border-left: 2px solid var(--accent);
+    margin-top: 8px;
+  }
+
+  .progress-display {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent3);
+    text-align: right;
+    margin-top: 2px;
+  }
+
+  .dep-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(124,106,255,0.15);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    color: var(--accent);
+    margin: 2px;
+    cursor: pointer;
+  }
+  .dep-tag:hover { background: rgba(255,68,102,0.15); color: #ff6688; }
+  .dep-tag:hover::after { content: ' ×'; }
+
+  /* AUTOSAVE */
+  .save-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-family: 'Space Mono', monospace;
+    color: var(--text-dim);
+    transition: color 0.3s;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+  }
+  .save-status.saving { color: var(--accent4); border-color: rgba(255,184,106,0.2); }
+  .save-status.saved  { color: var(--accent3); border-color: rgba(106,255,208,0.2); }
+  .save-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .save-status.saving .save-dot { animation: blink 0.6s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* HISTORY PANEL */
+  .history-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .history-item:hover { border-color: var(--accent); background: rgba(124,106,255,0.06); }
+  .history-item-time {
+    font-size: 11px; font-family: 'Space Mono', monospace;
+    color: var(--accent); margin-bottom: 3px;
+  }
+  .history-item-desc { font-size: 12px; color: var(--text); margin-bottom: 3px; }
+  .history-item-meta { font-size: 11px; color: var(--text-dim); }
+  .history-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .history-empty {
+    text-align: center; padding: 32px 16px;
+    color: var(--text-dim); font-size: 13px;
+  }
+  .history-empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.4; }
+
+  .restore-toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--accent3); color: #0a0a0f;
+    padding: 10px 20px; border-radius: 24px;
+    font-size: 13px; font-weight: 600;
+    z-index: 9999;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+  }
+  .restore-toast.show { opacity: 1; }
+
+  /* ===================== MOBILE RESPONSIVE ===================== */
+
+  /* ── Bottom Tab Bar ── */
+  .mobile-tab-bar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mobile-tab-bar-inner {
+    display: flex;
+    height: 58px;
+  }
+  .mobile-tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 9px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    transition: color 0.15s, background 0.15s;
+    padding: 6px 0 4px;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .mobile-tab-item.active { color: var(--accent); }
+  .mobile-tab-item.active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 0 0 3px 3px;
+  }
+  .mobile-tab-item-icon { font-size: 22px; line-height: 1; }
+
+  /* ── Bottom Sheet (抽屜) ── */
+  /* 半透明背景：只在抽屜開啟時顯示，不擋甘特圖點擊 */
+  .sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    bottom: 58px;          /* 不蓋底部導覽 */
+    background: rgba(0,0,0,0.45);
+    z-index: 160;
+    backdrop-filter: blur(1px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sheet-backdrop.open { display: block; }
+
+  /* 抽屜容器：從底部滑上，最高 70vh，不會遮整個畫面 */
+  .bottom-sheet {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: 58px;          /* 緊貼底部導覽上方 */
+    max-height: 72vh;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    z-index: 170;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(.4,0,.2,1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .bottom-sheet.open {
+    transform: translateY(0);
+  }
+
+  /* 抽屜頂部把手 */
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+  }
+
+  /* 抽屜標題列 */
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sheet-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+  }
+  .sheet-close-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sheet-close-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* 抽屜內容可捲動 */
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0;
+  }
+  .sheet-body::-webkit-scrollbar { display: none; }
+
+  /* ── Mobile 甘特頂部工具列 ── */
+  .mobile-gantt-top {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  .mobile-gantt-top::-webkit-scrollbar { display: none; }
+
+  /* ── Mobile 統計小條 ── */
+  .mobile-stats {
+    display: none;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 12px;
+    overflow-x: auto;
+    gap: 16px;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  .mobile-stats::-webkit-scrollbar { display: none; }
+  .mobile-stats .stat-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+
+  /* ── Mobile FAB ── */
+  .mobile-fab {
+    display: none;
+    position: fixed;
+    right: 16px;
+    bottom: 74px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 155;
+    box-shadow: 0 4px 18px rgba(124,106,255,0.55);
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-fab:active { transform: scale(0.9); }
+
+  /* ── 隱藏舊的 sidebar overlay（不再使用）── */
+  .sidebar-overlay { display: none !important; }
+
+  @media (max-width: 768px) {
+    /* Header 精簡 */
+    header { padding: 0 12px; }
+    .logo { font-size: 13px; }
+
+    /* 隱藏桌面用按鈕，但保留匯出和新增 */
+    .header-actions .btn-hide-mobile { display: none !important; }
+    .header-actions .save-status { display: flex; }
+
+    /* 顯示手機專用元素 */
+    .mobile-tab-bar { display: block; }
+    .mobile-fab { display: flex; }
+    .mobile-gantt-top { display: flex; }
+    .mobile-stats { display: flex; }
+
+    /* App 填滿 header 以下，不超出 */
+    .app {
+      height: calc(100dvh - 56px);
+      overflow: hidden;
+    }
+
+    /* Sidebar 完全隱藏（由底部抽屜取代） */
+    .sidebar { display: none !important; }
+
+    /* Main 全寬，flex column */
+    .main {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .gantt-controls { display: none; }
+    .stats-bar { display: none; }
+
+    /* 工具列固定高度 */
+    .mobile-gantt-top { height: 40px; flex-shrink: 0; }
+    /* 統計列固定高度 */
+    .mobile-stats { height: 32px; flex-shrink: 0; }
+
+    /* 甘特圖填滿剩餘空間，扣掉底部導覽(58px) */
+    .gantt-wrapper {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      margin-bottom: 58px;
+    }
+
+    /* 甘特標籤欄手機版 */
+    .gantt-label-col,
+    .gantt-row-label {
+      min-width: 110px !important;
+      width: 110px !important;
+    }
+    .row-name { font-size: 12px; }
+    .row-progress-badge { display: none; }
+
+    /* Modal 從底部彈出 */
+    .modal {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 90dvh;
+      border-radius: 16px 16px 0 0;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      margin: 0;
+    }
+    .modal-overlay { align-items: flex-end; }
+
+    /* 任務項目大觸控區 */
+    .task-item { padding: 12px 14px; }
+    .task-item-actions { opacity: 1; }
+
+    /* 歷史按鈕換行 */
+    .history-actions { flex-wrap: wrap; }
+    .sidebar-content .btn { font-size: 13px; }
+  }
+
+  @media (max-width: 420px) {
+    .gantt-label-col,
+    .gantt-row-label { min-width: 88px !important; width: 88px !important; }
+    .logo { font-size: 12px; }
+  }
+
+  /* ── Export Modal ── */
+  .export-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .export-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  @media (max-width: 768px) {
+    .export-modal-overlay { align-items: flex-end; }
+  }
+
+  .export-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    width: 420px;
+    max-width: 96vw;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .export-modal-overlay.open .export-modal { transform: scale(1); }
+
+  @media (max-width: 768px) {
+    .export-modal {
+      width: 100vw; max-width: 100vw;
+      border-radius: 16px 16px 0 0;
+      transform: translateY(20px);
+    }
+    .export-modal-overlay.open .export-modal { transform: translateY(0); }
+  }
+
+  .export-modal-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px; font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .export-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .export-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: center;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+  }
+  .export-card:hover { border-color: var(--accent); background: rgba(124,106,255,0.08); transform: translateY(-2px); }
+  .export-card:active { transform: scale(0.97); }
+  .export-card-icon { font-size: 32px; line-height: 1; }
+  .export-card-label {
+    font-size: 13px; font-weight: 700;
+    color: var(--text); letter-spacing: 0.02em;
+  }
+  .export-card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+
+  .export-card.csv  { border-top: 3px solid #6affd0; }
+  .export-card.json { border-top: 3px solid #6ab8ff; }
+  .export-card.import-json { border-top: 3px solid #ffb86a; }
+  .export-card.pdf  { border-top: 3px solid #ff6a9a; }
+
+  .export-section-title {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 10px;
+  }
+
+  /* PDF 進度提示 */
+  .pdf-progress {
+    display: none;
+    align-items: center; gap: 10px;
+    background: rgba(255,106,154,0.08);
+    border: 1px solid rgba(255,106,154,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--accent2);
+    margin-top: 4px;
+  }
+  .pdf-progress.show { display: flex; }
+  .pdf-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,106,154,0.3);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    GANTT MASTER
+  </div>
+  <div class="header-actions">
+    <div class="save-status" id="save-status">
+      <div class="save-dot"></div>
+      <span id="save-text">已自動儲存</span>
+    </div>
+    <button class="btn btn-hide-mobile" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn btn-hide-mobile" onclick="exportJSON()">↓ JSON</button>
+    <button class="btn btn-hide-mobile" onclick="importJSON()">↑ 匯入</button>
+    <button class="btn btn-hide-mobile" onclick="printGantt()">列印</button>
+    <button class="btn" onclick="openExportModal()">↕ 匯出／匯入</button>
+    <button class="btn btn-primary" onclick="openAddModal()">＋ 新增任務</button>
+  </div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR（桌面版保留，手機版由 Bottom Sheet 取代，CSS hidden） -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="tab active" onclick="switchTab('tasks')">任務列表</div>
+      <div class="tab" onclick="switchTab('settings')">設定</div>
+      <div class="tab" onclick="switchTab('stats')">統計</div>
+      <div class="tab" onclick="switchTab('history')">歷史</div>
+    </div>
+
+    <div class="sidebar-content" id="tab-tasks">
+      <div class="section-title">專案任務</div>
+      <div id="task-list"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" style="width:100%" onclick="openAddModal()">＋ 新增任務</button>
+      </div>
+      <div class="notice" style="margin-top:12px">
+        💡 拖曳甘特條可移動；拖曳邊緣可調整長度
+      </div>
+    </div>
+
+    <div class="sidebar-content" id="tab-settings" style="display:none">
+      <div class="section-title">顯示設定</div>
+      <div class="form-row">
+        <label>時間範圍起始</label>
+        <input type="date" id="range-start" onchange="updateView()">
+      </div>
+      <div class="form-row">
+        <label>時間範圍結束</label>
+        <input type="date" id="range-end" onchange="updateView()">
+      </div>
+      <div class="form-row">
+        <label>列高 (px)</label>
+        <input type="range" id="row-height" min="32" max="72" value="44" oninput="rowHeightVal.textContent=this.value+'px';renderGantt()">
+        <div class="progress-display" id="rowHeightVal">44px</div>
+      </div>
+      <div class="section-title">顯示選項</div>
+      <div class="form-row">
+        <label><input type="checkbox" id="show-deps" checked onchange="renderGantt()"> 顯示依賴關係箭頭</label>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" id="show-progress" checked onchange="renderGantt()"> 顯示進度</label>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" id="show-labels" checked onchange="renderGantt()"> 顯示條形標籤</label>
+      </div>
+      <div class="section-title">快速範本</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn" onclick="loadTemplate('software')">軟體開發專案</button>
+        <button class="btn" onclick="loadTemplate('marketing')">行銷活動企劃</button>
+        <button class="btn" onclick="loadTemplate('construction')">建設工程專案</button>
+        <button class="btn btn-danger" onclick="clearAll()">清除所有任務</button>
+      </div>
+    </div>
+
+    <div class="sidebar-content" id="tab-stats" style="display:none">
+      <div class="section-title">專案概覽</div>
+      <div id="stats-content"></div>
+    </div>
+
+    <div class="sidebar-content" id="tab-history" style="display:none">
+      <div class="section-title">版本歷史快照</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">快照只在「新增/編輯/刪除/拖曳」時建立，最多保留 <strong style="color:var(--accent)">100</strong> 筆</div>
+
+      <button class="btn btn-primary" style="width:100%;margin-bottom:10px;font-size:12px" onclick="saveNamedSnapshot()">
+        📌 手動建立命名快照
+      </button>
+
+      <div style="position:relative;margin-bottom:10px">
+        <input type="text" id="history-search" placeholder="🔍 搜尋快照名稱..." oninput="renderHistoryList()" style="padding-left:10px">
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--text-dim)" id="history-count-label">共 0 筆</span>
+        <div style="display:flex;gap:4px">
+          <button class="zoom-btn" id="hist-filter-all" onclick="setHistFilter('all')" style="font-size:10px;padding:3px 8px">全部</button>
+          <button class="zoom-btn" id="hist-filter-named" onclick="setHistFilter('named')" style="font-size:10px;padding:3px 8px">命名</button>
+          <button class="zoom-btn" id="hist-filter-auto" onclick="setHistFilter('auto')" style="font-size:10px;padding:3px 8px">自動</button>
+        </div>
+      </div>
+
+      <div id="history-list"></div>
+
+      <div id="history-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:10px"></div>
+
+      <div style="margin-top:12px;display:flex;gap:6px">
+        <button class="btn" style="flex:1;font-size:11px" onclick="exportHistoryJSON()">↓ 匯出歷史</button>
+        <button class="btn btn-danger" style="flex:1;font-size:11px" onclick="clearHistory()">清除全部</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Mobile zoom controls -->
+    <div class="mobile-gantt-top">
+      <span style="font-size:11px;color:var(--text-dim);flex-shrink:0">縮放：</span>
+      <div class="zoom-group">
+        <button class="zoom-btn active" onclick="setZoom('day')" id="mob-zoom-day">日</button>
+        <button class="zoom-btn" onclick="setZoom('week')" id="mob-zoom-week">週</button>
+        <button class="zoom-btn" onclick="setZoom('month')" id="mob-zoom-month">月</button>
+      </div>
+      <button class="btn" style="font-size:12px;padding:5px 10px" onclick="scrollToToday()">今天</button>
+      <button class="btn" style="font-size:12px;padding:5px 10px" onclick="scrollToStart()">起點</button>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-dim);flex-shrink:0" id="mob-date-range"></span>
+    </div>
+
+    <div class="gantt-controls">
+      <span class="view-label">縮放：</span>
+      <div class="zoom-group">
+        <button class="zoom-btn active" onclick="setZoom('day')" id="zoom-day">日</button>
+        <button class="zoom-btn" onclick="setZoom('week')" id="zoom-week">週</button>
+        <button class="zoom-btn" onclick="setZoom('month')" id="zoom-month">月</button>
+      </div>
+      <button class="btn" onclick="scrollToToday()">今天</button>
+      <button class="btn" onclick="scrollToStart()">起點</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-dim)" id="date-range-display"></span>
+    </div>
+
+    <div class="gantt-wrapper" id="gantt-wrapper">
+      <div id="gantt-container"></div>
+    </div>
+
+    <!-- Mobile stats scrollable bar -->
+    <div class="mobile-stats" id="mobile-stats-bar">
+      <div class="stat-item">任務 <span class="stat-value" id="mob-stat-total">0</span></div>
+      <div class="stat-item">進行中 <span class="stat-value" id="mob-stat-active">0</span></div>
+      <div class="stat-item">完成 <span class="stat-value" id="mob-stat-done">0</span></div>
+      <div class="stat-item">進度 <span class="stat-value" id="mob-stat-progress">0%</span></div>
+      <div class="stat-item">天數 <span class="stat-value" id="mob-stat-days">—</span></div>
+    </div>
+
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-item">任務數：<span class="stat-value" id="stat-total">0</span></div>
+      <div class="stat-item">進行中：<span class="stat-value" id="stat-active">0</span></div>
+      <div class="stat-item">已完成：<span class="stat-value" id="stat-done">0</span></div>
+      <div class="stat-item">整體進度：<span class="stat-value" id="stat-progress">0%</span></div>
+      <div class="stat-item" style="margin-left:auto">專案天數：<span class="stat-value" id="stat-days">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE FAB (新增任務) -->
+<button class="mobile-fab" onclick="openAddModal()" aria-label="新增任務">＋</button>
+
+<!-- SHEET BACKDROP -->
+<div class="sheet-backdrop" id="sheet-backdrop" onclick="closeSheet()"></div>
+
+<!-- BOTTOM SHEET (抽屜) -->
+<div class="bottom-sheet" id="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title" id="sheet-title">任務列表</span>
+    <button class="sheet-close-btn" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="sheet-body" id="sheet-body">
+    <!-- 動態內容由 JS 注入 -->
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM TAB BAR -->
+<nav class="mobile-tab-bar">
+  <div class="mobile-tab-bar-inner">
+    <button class="mobile-tab-item active" id="mob-tab-gantt" onclick="mobileSwitchView('gantt')">
+      <span class="mobile-tab-item-icon">📊</span>甘特圖
+    </button>
+    <button class="mobile-tab-item" id="mob-tab-tasks" onclick="mobileSwitchView('tasks')">
+      <span class="mobile-tab-item-icon">📋</span>任務
+    </button>
+    <button class="mobile-tab-item" id="mob-tab-stats" onclick="mobileSwitchView('stats')">
+      <span class="mobile-tab-item-icon">📈</span>統計
+    </button>
+    <button class="mobile-tab-item" id="mob-tab-settings" onclick="mobileSwitchView('settings')">
+      <span class="mobile-tab-item-icon">⚙️</span>設定
+    </button>
+    <button class="mobile-tab-item" id="mob-tab-history" onclick="mobileSwitchView('history')">
+      <span class="mobile-tab-item-icon">🕐</span>歷史
+    </button>
+  </div>
+</nav>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">新增任務</div>
+    <input type="hidden" id="edit-id">
+
+    <div class="form-row">
+      <label>任務名稱 *</label>
+      <input type="text" id="form-name" placeholder="輸入任務名稱...">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
+        <label>開始日期 *</label>
+        <input type="date" id="form-start">
+      </div>
+      <div class="form-row">
+        <label>結束日期 *</label>
+        <input type="date" id="form-end">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>進度 (<span id="progress-label">0</span>%)</label>
+      <input type="range" id="form-progress" min="0" max="100" value="0"
+        oninput="document.getElementById('progress-label').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <label>負責人</label>
+      <input type="text" id="form-assignee" placeholder="負責人姓名...">
+    </div>
+    <div class="form-row">
+      <label>顏色</label>
+      <div class="color-row" id="color-picker"></div>
+    </div>
+    <div class="form-row">
+      <label>分類</label>
+      <select id="form-category">
+        <option value="">無分類</option>
+        <option value="planning">規劃</option>
+        <option value="design">設計</option>
+        <option value="development">開發</option>
+        <option value="testing">測試</option>
+        <option value="deployment">部署</option>
+        <option value="marketing">行銷</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>前置任務（依賴）</label>
+      <div id="dep-tags"></div>
+      <select id="dep-select" onchange="addDep(this.value);this.value=''">
+        <option value="">選擇前置任務...</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>備註</label>
+      <textarea id="form-notes" placeholder="輸入備註..."></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTask()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAMED SNAPSHOT MODAL -->
+<div class="modal-overlay" id="snapshot-modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">📌 建立命名快照</div>
+    <div class="form-row">
+      <label>快照名稱</label>
+      <input type="text" id="snapshot-name" placeholder="例如：版本 1.0 基準線、重大里程碑...">
+    </div>
+    <div class="form-row">
+      <label>備註（選填）</label>
+      <textarea id="snapshot-note" placeholder="記錄此版本的重要說明..." style="min-height:60px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeSnapshotModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmNamedSnapshot()">儲存快照</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+<div class="restore-toast" id="restore-toast"></div>
+
+<!-- EXPORT / IMPORT MODAL -->
+<div class="export-modal-overlay" id="export-modal">
+  <div class="export-modal">
+    <div class="export-modal-title">
+      <span>↕</span> 匯出 &amp; 匯入
+    </div>
+
+    <div class="export-section-title">匯出</div>
+    <div class="export-grid">
+      <!-- CSV -->
+      <div class="export-card csv" onclick="doExportCSV()">
+        <div class="export-card-icon">📄</div>
+        <div class="export-card-label">下載 CSV</div>
+        <div class="export-card-desc">可用 Excel / Numbers 開啟的試算表格式</div>
+      </div>
+      <!-- JSON -->
+      <div class="export-card json" onclick="doExportJSON()">
+        <div class="export-card-icon">💾</div>
+        <div class="export-card-label">下載 JSON</div>
+        <div class="export-card-desc">完整專案備份，可再次匯入還原</div>
+      </div>
+      <!-- PDF -->
+      <div class="export-card pdf" onclick="doExportPDF()" style="grid-column: span 2;">
+        <div class="export-card-icon">📑</div>
+        <div class="export-card-label">產生 PDF 報表</div>
+        <div class="export-card-desc">包含甘特圖視覺化 + 任務明細表，適合簡報分享</div>
+      </div>
+    </div>
+
+    <div id="pdf-progress" class="pdf-progress">
+      <div class="pdf-spinner"></div>
+      <span id="pdf-progress-text">正在產生 PDF，請稍候…</span>
+    </div>
+
+    <div class="export-section-title" style="margin-top:18px">匯入</div>
+    <div class="export-grid">
+      <div class="export-card import-json" onclick="doImportJSON()" style="grid-column: span 2;">
+        <div class="export-card-icon">📂</div>
+        <div class="export-card-label">載入 JSON</div>
+        <div class="export-card-desc">選擇先前匯出的 .json 檔案來還原專案</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:8px">
+      <button class="btn" onclick="closeExportModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let tasks = [];
+let selectedTaskId = null;
+let zoom = 'day'; // day | week | month
+let dayWidth = 28;
+let editDeps = [];
+let selectedColor = '#7c6aff';
+let dragState = null;
+
+const COLORS = [
+  '#7c6aff','#ff6a9a','#6affd0','#ffb86a',
+  '#6ab8ff','#ff9f6a','#b86aff','#6aff8e',
+  '#ff6a6a','#6affec','#ffec6a','#ff6ab8'
+];
+
+const CAT_COLORS = {
+  planning:'#7c6aff', design:'#ff6a9a', development:'#6ab8ff',
+  testing:'#6affd0', deployment:'#ffb86a', marketing:'#b86aff',
+  other:'#8888aa'
+};
+
+// ===================== INIT =====================
+function init() {
+  buildColorPicker();
+  setDefaultDates();
+  loadTemplate('software');
+}
+
+function setDefaultDates() {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(1);
+  const end = new Date(today);
+  end.setMonth(end.getMonth() + 3);
+  document.getElementById('range-start').value = fmtDate(start);
+  document.getElementById('range-end').value = fmtDate(end);
+}
+
+function buildColorPicker() {
+  const el = document.getElementById('color-picker');
+  el.innerHTML = COLORS.map(c => `
+    <div class="color-swatch ${c===selectedColor?'selected':''}"
+      style="background:${c}" onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+
+function selectColor(c) {
+  selectedColor = c;
+  buildColorPicker();
+}
+
+// ===================== TABS =====================
+function switchTab(name) {
+  ['tasks','settings','stats','history'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+    document.querySelectorAll('.tab')[['tasks','settings','stats','history'].indexOf(t)].classList.toggle('active', t===name);
+  });
+  if(name==='stats') updateStats();
+  if(name==='history') renderHistoryList();
+}
+
+// ===================== DATE UTILS =====================
+function fmtDate(d) {
+  return d.toISOString().split('T')[0];
+}
+function parseDate(s) {
+  return new Date(s + 'T00:00:00');
+}
+function diffDays(a, b) {
+  return Math.round((b - a) / 86400000);
+}
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function fmtDisplay(d) {
+  return d.toLocaleDateString('zh-TW', {month:'short', day:'numeric'});
+}
+
+// ===================== TASKS CRUD =====================
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = '新增任務';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('form-name').value = '';
+  document.getElementById('form-assignee').value = '';
+  document.getElementById('form-notes').value = '';
+  document.getElementById('form-category').value = '';
+  document.getElementById('form-progress').value = 0;
+  document.getElementById('progress-label').textContent = '0';
+  const today = fmtDate(new Date());
+  const nextWeek = fmtDate(addDays(new Date(), 7));
+  document.getElementById('form-start').value = today;
+  document.getElementById('form-end').value = nextWeek;
+  editDeps = [];
+  selectedColor = COLORS[tasks.length % COLORS.length];
+  buildColorPicker();
+  buildDepUI();
+  document.getElementById('task-modal').classList.add('open');
+  setTimeout(() => document.getElementById('form-name').focus(), 100);
+}
+
+function openEditModal(id) {
+  const t = tasks.find(x => x.id === id);
+  if(!t) return;
+  document.getElementById('modal-title').textContent = '編輯任務';
+  document.getElementById('edit-id').value = id;
+  document.getElementById('form-name').value = t.name;
+  document.getElementById('form-start').value = t.start;
+  document.getElementById('form-end').value = t.end;
+  document.getElementById('form-progress').value = t.progress || 0;
+  document.getElementById('progress-label').textContent = t.progress || 0;
+  document.getElementById('form-assignee').value = t.assignee || '';
+  document.getElementById('form-notes').value = t.notes || '';
+  document.getElementById('form-category').value = t.category || '';
+  selectedColor = t.color || COLORS[0];
+  editDeps = [...(t.deps || [])];
+  buildColorPicker();
+  buildDepUI();
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('task-modal').classList.remove('open');
+}
+
+function saveTask() {
+  const name = document.getElementById('form-name').value.trim();
+  const start = document.getElementById('form-start').value;
+  const end = document.getElementById('form-end').value;
+  if(!name || !start || !end) { alert('請填寫任務名稱與日期'); return; }
+  if(start > end) { alert('開始日期不能晚於結束日期'); return; }
+
+  const id = document.getElementById('edit-id').value || genId();
+  const task = {
+    id, name, start, end,
+    progress: parseInt(document.getElementById('form-progress').value) || 0,
+    color: selectedColor,
+    assignee: document.getElementById('form-assignee').value.trim(),
+    notes: document.getElementById('form-notes').value.trim(),
+    category: document.getElementById('form-category').value,
+    deps: [...editDeps]
+  };
+
+  const isEdit = !!document.getElementById('edit-id').value;
+  const idx = tasks.findIndex(x => x.id === id);
+  if(idx >= 0) tasks[idx] = task;
+  else tasks.push(task);
+
+  closeModal();
+  renderAll();
+  createSnapshot(isEdit ? `編輯任務：${task.name}` : `新增任務：${task.name}`);
+}
+
+function deleteTask(id) {
+  const t = tasks.find(x => x.id === id);
+  const name = t ? t.name : '';
+  tasks = tasks.filter(x => x.id !== id);
+  tasks.forEach(t => { t.deps = (t.deps||[]).filter(d => d !== id); });
+  if(selectedTaskId === id) selectedTaskId = null;
+  renderAll();
+  if(name) createSnapshot(`刪除任務：${name}`);
+}
+
+// ===================== DEPS UI =====================
+function buildDepUI() {
+  const tagsEl = document.getElementById('dep-tags');
+  const selectEl = document.getElementById('dep-select');
+  const editId = document.getElementById('edit-id').value;
+
+  tagsEl.innerHTML = editDeps.map(id => {
+    const t = tasks.find(x => x.id === id);
+    return t ? `<span class="dep-tag" onclick="removeDep('${id}')">${t.name}</span>` : '';
+  }).join('');
+
+  selectEl.innerHTML = '<option value="">選擇前置任務...</option>' +
+    tasks.filter(t => t.id !== editId && !editDeps.includes(t.id))
+      .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+function addDep(id) {
+  if(id && !editDeps.includes(id)) {
+    editDeps.push(id);
+    buildDepUI();
+  }
+}
+function removeDep(id) {
+  editDeps = editDeps.filter(d => d !== id);
+  buildDepUI();
+}
+
+// ===================== TASK LIST =====================
+function renderTaskList() {
+  const el = document.getElementById('task-list');
+  if(!tasks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">尚無任務，點擊「新增任務」開始</div></div>';
+    return;
+  }
+  el.innerHTML = tasks.map(t => `
+    <div class="task-item ${selectedTaskId===t.id?'selected':''}" onclick="selectTask('${t.id}')">
+      <div class="task-color-bar" style="background:${t.color}"></div>
+      <div class="task-item-name" style="padding-left:8px">${t.name}</div>
+      <div class="task-item-meta" style="padding-left:8px">${t.start} → ${t.end} · ${t.progress||0}%</div>
+      <div class="task-item-actions">
+        <button class="icon-btn" onclick="event.stopPropagation();openEditModal('${t.id}')">✎</button>
+        <button class="icon-btn" onclick="event.stopPropagation();deleteTask('${t.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectTask(id) {
+  selectedTaskId = selectedTaskId === id ? null : id;
+  renderAll();
+}
+
+// ===================== ZOOM =====================
+function setZoom(z) {
+  zoom = z;
+  dayWidth = z==='day' ? 28 : z==='week' ? 14 : 6;
+  ['day','week','month'].forEach(n => {
+    document.getElementById('zoom-'+n).classList.toggle('active', n===z);
+    const mob = document.getElementById('mob-zoom-'+n);
+    if(mob) mob.classList.toggle('active', n===z);
+  });
+  renderGantt();
+}
+
+// ===================== VIEW =====================
+function updateView() { renderGantt(); }
+
+function getViewDates() {
+  const s = document.getElementById('range-start').value;
+  const e = document.getElementById('range-end').value;
+  if(!s || !e) return null;
+  return { start: parseDate(s), end: parseDate(e) };
+}
+
+// ===================== RENDER GANTT =====================
+function renderAll() {
+  renderTaskList();
+  renderGantt();
+  updateStatsBar();
+  // 如果 Bottom Sheet 正在開著，同步更新抽屜內容
+  if(isMobile() && mobileView !== 'gantt') {
+    const sheetList = document.querySelector('#sheet-body [id="task-list"]');
+    if(sheetList) sheetList.innerHTML = document.getElementById('task-list').innerHTML;
+  }
+  autoSave();
+}
+
+function renderGantt() {
+  const container = document.getElementById('gantt-container');
+  const range = getViewDates();
+  if(!range) { container.innerHTML = ''; return; }
+
+  const { start, end } = range;
+  const totalDays = diffDays(start, end) + 1;
+  const rowHeight = parseInt(document.getElementById('row-height').value) || 44;
+
+  // 動態 labelW：手機螢幕縮窄，桌面保持 220
+  const mobile = window.innerWidth <= 768;
+  const small  = window.innerWidth <= 420;
+  const labelW = small ? 88 : mobile ? 110 : 220;
+
+  const totalW = labelW + totalDays * dayWidth;
+
+  document.getElementById('date-range-display').textContent =
+    `${fmtDisplay(start)} — ${fmtDisplay(end)} (${totalDays} 天)`;
+  const mobRange = document.getElementById('mob-date-range');
+  if(mobRange) mobRange.textContent = `${totalDays}天`;
+
+  // Build header
+  let monthsHTML = '';
+  let daysHTML = '';
+  let cur = new Date(start);
+  let monthStart = new Date(start);
+  let monthName = cur.toLocaleDateString('zh-TW', {year:'numeric', month:'short'});
+
+  if (zoom === 'week') {
+    // 週視圖：上排顯示月份，下排每格一天但只在週一顯示日期
+    while(cur <= end) {
+      const dow = cur.getDay(); // 0=Sun,1=Mon
+      const isToday = fmtDate(cur) === fmtDate(new Date());
+      const isMonday = dow === 1;
+      const isSunday = dow === 0;
+      const label = isMonday ? cur.getDate() : (isToday ? '•' : '');
+      daysHTML += `<div class="day-cell ${(isSunday||dow===6)?'weekend':''} ${isToday?'today-header':''}"
+        style="width:${dayWidth}px;min-width:${dayWidth}px;font-size:9px">${label}</div>`;
+
+      const nextDay = addDays(cur, 1);
+      const newMonth = nextDay.getMonth() !== cur.getMonth() || nextDay > end;
+      if(newMonth) {
+        const mDays = diffDays(monthStart, cur) + 1;
+        monthsHTML += `<div class="month-cell" style="width:${mDays*dayWidth}px;min-width:${mDays*dayWidth}px">${monthName}</div>`;
+        monthStart = nextDay;
+        monthName = nextDay.toLocaleDateString('zh-TW', {year:'numeric', month:'short'});
+      }
+      cur = nextDay;
+    }
+  } else {
+    // 日視圖 / 月視圖
+    while(cur <= end) {
+      const dow = cur.getDay();
+      const isToday = fmtDate(cur) === fmtDate(new Date());
+      daysHTML += `<div class="day-cell ${dow===0||dow===6?'weekend':''} ${isToday?'today-header':''}"
+        style="width:${dayWidth}px;min-width:${dayWidth}px">${zoom==='month'&&dayWidth<10?'':cur.getDate()}</div>`;
+
+      const nextDay = addDays(cur, 1);
+      const newMonth = nextDay.getMonth() !== cur.getMonth() || nextDay > end;
+      if(newMonth) {
+        const mDays = diffDays(monthStart, cur) + 1;
+        monthsHTML += `<div class="month-cell" style="width:${mDays*dayWidth}px;min-width:${mDays*dayWidth}px">${monthName}</div>`;
+        monthStart = nextDay;
+        monthName = nextDay.toLocaleDateString('zh-TW', {year:'numeric', month:'short'});
+      }
+      cur = nextDay;
+    }
+  }
+
+  // Today position
+  const todayOffset = diffDays(start, new Date());
+  const todayX = labelW + todayOffset * dayWidth + dayWidth/2;
+  const showToday = todayOffset >= 0 && todayOffset <= totalDays;
+
+  // Build rows
+  const showDeps = document.getElementById('show-deps').checked;
+  const showProgress = document.getElementById('show-progress').checked;
+  const showLabels = document.getElementById('show-labels').checked;
+
+  let rowsHTML = '';
+  let barData = []; // for dep arrows
+
+  tasks.forEach((t, i) => {
+    const tStart = parseDate(t.start);
+    const tEnd = parseDate(t.end);
+    const barLeft = diffDays(start, tStart);
+    const barDays = diffDays(tStart, tEnd) + 1;
+    const barX = barLeft * dayWidth;
+    const barW = barDays * dayWidth;
+    const prog = t.progress || 0;
+    const progW = (prog/100) * barW;
+    const midY = rowHeight / 2;
+
+    barData.push({
+      id: t.id,
+      x: labelW + barX,
+      xEnd: labelW + barX + barW,
+      y: i * rowHeight + midY,
+      deps: t.deps || []
+    });
+
+    // Grid vertical lines
+    let gridLines = '';
+    for(let d = 0; d < totalDays; d++) {
+      const lineDate = addDays(start, d);
+      const dow = lineDate.getDay();
+      if(dow === 0) gridLines += `<div class="grid-line-v" style="left:${labelW + d*dayWidth}px"></div>`;
+    }
+
+    const isSelected = selectedTaskId === t.id;
+    const isVisible = barLeft + barDays > 0 && barLeft < totalDays;
+
+    rowsHTML += `
+      <div class="gantt-row ${isSelected?'selected-row':''}" style="height:${rowHeight}px" onclick="selectTask('${t.id}')">
+        <div class="gantt-row-label" style="height:${rowHeight}px">
+          <div class="row-color-dot" style="background:${t.color}"></div>
+          <div class="row-name" title="${t.name}">${t.name}</div>
+          ${!mobile ? `<div class="row-progress-badge">${prog}%</div>` : ''}
+        </div>
+        <div class="gantt-row-timeline" style="width:${totalDays*dayWidth}px">
+          ${gridLines}
+          ${showToday?`<div class="grid-line-v grid-line-today" style="left:${todayOffset*dayWidth}px"></div>`:''}
+          ${isVisible ? `
+          <div class="gantt-bar-wrapper"
+            style="left:${barX}px;width:${barW}px"
+            data-id="${t.id}"
+            onmousedown="startDrag(event,'${t.id}','move')"
+            onmouseenter="showTooltip(event,'${t.id}')"
+            onmouseleave="hideTooltip()"
+            ondblclick="openEditModal('${t.id}')">
+            <div class="gantt-bar" style="background:${t.color}">
+              ${showProgress?`<div class="gantt-bar-progress" style="width:${progW}px;right:${barW-progW}px"></div>`:''}
+              ${showLabels?`<div class="gantt-bar-label">${t.name}${t.assignee?' · '+t.assignee:''}</div>`:''}
+            </div>
+            <div class="resize-handle resize-handle-left" onmousedown="event.stopPropagation();startDrag(event,'${t.id}','left')"></div>
+            <div class="resize-handle" onmousedown="event.stopPropagation();startDrag(event,'${t.id}','right')"></div>
+          </div>` : ''}
+        </div>
+      </div>`;
+  });
+
+  // SVG for dependencies
+  let svgContent = '';
+  if(showDeps) {
+    barData.forEach(b => {
+      b.deps.forEach(depId => {
+        const dep = barData.find(x => x.id === depId);
+        if(!dep) return;
+        const x1 = dep.xEnd;
+        const y1 = dep.y;
+        const x2 = b.x;
+        const y2 = b.y;
+        const cx = (x1 + x2) / 2;
+        svgContent += `<path d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}"
+          fill="none" stroke="rgba(124,106,255,0.4)" stroke-width="1.5"
+          marker-end="url(#arrow)"/>`;
+      });
+    });
+  }
+
+  const totalH = tasks.length * rowHeight;
+  const svgDefs = `<defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L6,3 L0,6" fill="none" stroke="rgba(124,106,255,0.6)" stroke-width="1.2"/>
+  </marker></defs>`;
+
+  container.style.width = totalW + 'px';
+  container.innerHTML = `
+    <div class="gantt-header" style="width:${totalW}px">
+      <div class="gantt-label-col" style="height:56px">
+        <div class="gantt-header-label">任務名稱</div>
+      </div>
+      <div class="gantt-timeline-header" style="width:${totalDays*dayWidth}px;overflow:hidden">
+        <div class="month-row">${monthsHTML}</div>
+        <div class="day-row">${daysHTML}</div>
+      </div>
+    </div>
+    <div class="gantt-body" style="position:relative">
+      ${rowsHTML}
+      ${totalH > 0 ? `<svg class="dep-svg" style="width:${totalW}px;height:${totalH}px">${svgDefs}${svgContent}</svg>` : ''}
+      ${showToday ? `<div class="today-line" style="left:${labelW + todayOffset*dayWidth + dayWidth/2}px;height:${totalH}px"></div>` : ''}
+    </div>
+    ${tasks.length === 0 ? `<div class="empty-state" style="margin:48px auto;text-align:center">
+      <div class="empty-state-icon">📊</div>
+      <div class="empty-state-text">尚無任務，請在左側新增任務</div>
+    </div>` : ''}
+  `;
+}
+
+// ===================== DRAG =====================
+function startDrag(e, id, mode) {
+  e.preventDefault();
+  e.stopPropagation();
+  const range = getViewDates();
+  if(!range) return;
+
+  dragState = {
+    id, mode,
+    startX: e.clientX,
+    task: { ...tasks.find(x => x.id === id) },
+    startDay: diffDays(range.start, parseDate(tasks.find(x=>x.id===id).start)),
+    endDay: diffDays(range.start, parseDate(tasks.find(x=>x.id===id).end)),
+    rangeStart: range.start
+  };
+
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+
+function onDrag(e) {
+  if(!dragState) return;
+  const dx = e.clientX - dragState.startX;
+  const dayDelta = Math.round(dx / dayWidth);
+  const t = tasks.find(x => x.id === dragState.id);
+  if(!t) return;
+
+  if(dragState.mode === 'move') {
+    const newStart = addDays(parseDate(dragState.task.start), dayDelta);
+    const dur = diffDays(parseDate(dragState.task.start), parseDate(dragState.task.end));
+    t.start = fmtDate(newStart);
+    t.end = fmtDate(addDays(newStart, dur));
+  } else if(dragState.mode === 'right') {
+    const newEnd = addDays(parseDate(dragState.task.end), dayDelta);
+    if(newEnd > parseDate(t.start)) t.end = fmtDate(newEnd);
+  } else if(dragState.mode === 'left') {
+    const newStart = addDays(parseDate(dragState.task.start), dayDelta);
+    if(newStart < parseDate(t.end)) t.start = fmtDate(newStart);
+  }
+
+  renderGantt();
+  renderTaskList();
+}
+
+function endDrag() {
+  if(dragState) {
+    const t = tasks.find(x => x.id === dragState.id);
+    if(t) createSnapshot(`移動任務：${t.name}`);
+  }
+  dragState = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  updateStatsBar();
+}
+
+// ===================== TOOLTIP =====================
+function showTooltip(e, id) {
+  const t = tasks.find(x => x.id === id);
+  if(!t) return;
+  const dur = diffDays(parseDate(t.start), parseDate(t.end)) + 1;
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <div class="tooltip-title" style="color:${t.color}">${t.name}</div>
+    <div class="tooltip-row"><span>開始</span><span class="tooltip-val">${t.start}</span></div>
+    <div class="tooltip-row"><span>結束</span><span class="tooltip-val">${t.end}</span></div>
+    <div class="tooltip-row"><span>工期</span><span class="tooltip-val">${dur} 天</span></div>
+    <div class="tooltip-row"><span>進度</span><span class="tooltip-val">${t.progress||0}%</span></div>
+    ${t.assignee?`<div class="tooltip-row"><span>負責人</span><span class="tooltip-val">${t.assignee}</span></div>`:''}
+  `;
+  tooltip.style.left = (e.clientX + 12) + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+  tooltip.classList.add('visible');
+}
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+// ===================== STATS =====================
+function updateStatsBar() {
+  const total = tasks.length;
+  const done = tasks.filter(t => (t.progress||0) >= 100).length;
+  const today = fmtDate(new Date());
+  const active = tasks.filter(t => t.start <= today && t.end >= today).length;
+  const avgProg = total ? Math.round(tasks.reduce((s,t) => s+(t.progress||0), 0)/total) : 0;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-progress').textContent = avgProg + '%';
+
+  // Also update mobile stats
+  const ms = document.getElementById('mob-stat-total');
+  if(ms) {
+    document.getElementById('mob-stat-total').textContent = total;
+    document.getElementById('mob-stat-active').textContent = active;
+    document.getElementById('mob-stat-done').textContent = done;
+    document.getElementById('mob-stat-progress').textContent = avgProg + '%';
+  }
+
+  if(tasks.length) {
+    const starts = tasks.map(t => t.start).sort();
+    const ends = tasks.map(t => t.end).sort();
+    const days = diffDays(parseDate(starts[0]), parseDate(ends[ends.length-1])) + 1;
+    document.getElementById('stat-days').textContent = days;
+    if(ms) document.getElementById('mob-stat-days').textContent = days;
+  }
+}
+
+function updateStats() {
+  const el = document.getElementById('stats-content');
+  if(!tasks.length) { el.innerHTML = '<p style="color:var(--text-dim);font-size:13px">尚無任務</p>'; return; }
+
+  const total = tasks.length;
+  const done = tasks.filter(t => (t.progress||0) >= 100).length;
+  const inProg = tasks.filter(t => (t.progress||0) > 0 && (t.progress||0) < 100).length;
+  const notStarted = total - done - inProg;
+  const avgProg = Math.round(tasks.reduce((s,t) => s+(t.progress||0), 0)/total);
+
+  const cats = {};
+  tasks.forEach(t => { const c = t.category||'other'; cats[c] = (cats[c]||0) + 1; });
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      ${[['總任務',total,'#7c6aff'],['已完成',done,'#6affd0'],['進行中',inProg,'#ffb86a'],['未開始',notStarted,'#8888aa']].map(([l,v,c]) =>
+        `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:24px;font-weight:700;color:${c};font-family:'Space Mono',monospace">${v}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div class="section-title">整體進度</div>
+    <div style="background:var(--surface2);border-radius:6px;height:8px;margin-bottom:4px;overflow:hidden">
+      <div style="height:100%;width:${avgProg}%;background:linear-gradient(to right,var(--accent),var(--accent3));border-radius:6px;transition:width 0.5s"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);text-align:right;font-family:'Space Mono',monospace">${avgProg}%</div>
+    <div class="section-title" style="margin-top:16px">分類分布</div>
+    ${Object.entries(cats).map(([c,n]) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${CAT_COLORS[c]||'#8888aa'}"></div>
+        <div style="flex:1;font-size:12px">${c}</div>
+        <div style="font-size:12px;font-family:'Space Mono',monospace;color:var(--text-dim)">${n}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ===================== NAVIGATE =====================
+function scrollToToday() {
+  const range = getViewDates();
+  if(!range) return;
+  const offset = diffDays(range.start, new Date());
+  const wrapper = document.getElementById('gantt-wrapper');
+  wrapper.scrollLeft = Math.max(0, 220 + offset * dayWidth - wrapper.clientWidth / 2);
+}
+
+function scrollToStart() {
+  document.getElementById('gantt-wrapper').scrollLeft = 0;
+}
+
+// ===================== TEMPLATES =====================
+function loadTemplate(name) {
+  const today = new Date();
+  const T = (d) => fmtDate(addDays(today, d));
+
+  const templates = {
+    software: [
+      {name:'需求分析', start:T(0), end:T(7), color:'#7c6aff', progress:100, category:'planning', assignee:'PM'},
+      {name:'系統設計', start:T(5), end:T(14), color:'#ff6a9a', progress:80, category:'design', assignee:'架構師'},
+      {name:'UI設計', start:T(7), end:T(18), color:'#b86aff', progress:60, category:'design', assignee:'設計師'},
+      {name:'前端開發', start:T(15), end:T(35), color:'#6ab8ff', progress:30, category:'development', assignee:'前端工程師'},
+      {name:'後端開發', start:T(14), end:T(38), color:'#6affd0', progress:25, category:'development', assignee:'後端工程師'},
+      {name:'API整合', start:T(30), end:T(42), color:'#ffb86a', progress:0, category:'development', assignee:'全端工程師'},
+      {name:'單元測試', start:T(35), end:T(48), color:'#ff9f6a', progress:0, category:'testing', assignee:'QA'},
+      {name:'UAT', start:T(46), end:T(55), color:'#ff6a6a', progress:0, category:'testing', assignee:'測試組'},
+      {name:'上線部署', start:T(54), end:T(58), color:'#6affec', progress:0, category:'deployment', assignee:'DevOps'},
+    ],
+    marketing: [
+      {name:'市場調研', start:T(0), end:T(10), color:'#7c6aff', progress:100, category:'planning', assignee:'行銷總監'},
+      {name:'策略規劃', start:T(8), end:T(18), color:'#ff6a9a', progress:70, category:'planning', assignee:'策略師'},
+      {name:'內容創作', start:T(15), end:T(30), color:'#b86aff', progress:40, category:'design', assignee:'文案'},
+      {name:'視覺設計', start:T(15), end:T(28), color:'#6ab8ff', progress:50, category:'design', assignee:'設計師'},
+      {name:'社群媒體', start:T(25), end:T(60), color:'#6affd0', progress:20, category:'marketing', assignee:'社群'},
+      {name:'廣告投放', start:T(28), end:T(58), color:'#ffb86a', progress:0, category:'marketing', assignee:'廣告師'},
+      {name:'效益追蹤', start:T(30), end:T(65), color:'#ff6a6a', progress:0, category:'other', assignee:'分析師'},
+    ],
+    construction: [
+      {name:'基地勘查', start:T(0), end:T(7), color:'#7c6aff', progress:100, category:'planning'},
+      {name:'設計審核', start:T(5), end:T(20), color:'#ff6a9a', progress:80, category:'design'},
+      {name:'許可申請', start:T(15), end:T(30), color:'#b86aff', progress:50, category:'planning'},
+      {name:'地基工程', start:T(28), end:T(50), color:'#ffb86a', progress:20, category:'development'},
+      {name:'結構施工', start:T(45), end:T(90), color:'#6ab8ff', progress:0, category:'development'},
+      {name:'水電配管', start:T(80), end:T(110), color:'#6affd0', progress:0, category:'development'},
+      {name:'內部裝修', start:T(100), end:T(140), color:'#ff9f6a', progress:0, category:'design'},
+      {name:'驗收交屋', start:T(138), end:T(148), color:'#6affec', progress:0, category:'testing'},
+    ]
+  };
+
+  const tmpl = templates[name];
+  if(!tmpl) return;
+
+  tasks = tmpl.map((t, i) => ({
+    id: genId(),
+    deps: [],
+    notes: '',
+    assignee: t.assignee || '',
+    ...t
+  }));
+
+  // Add some deps
+  if(name === 'software' && tasks.length >= 9) {
+    tasks[3].deps = [tasks[0].id, tasks[1].id];
+    tasks[4].deps = [tasks[1].id];
+    tasks[5].deps = [tasks[3].id, tasks[4].id];
+    tasks[6].deps = [tasks[3].id, tasks[4].id];
+    tasks[7].deps = [tasks[6].id];
+    tasks[8].deps = [tasks[7].id];
+  }
+
+  // Set range
+  const allStarts = tasks.map(t => parseDate(t.start));
+  const allEnds = tasks.map(t => parseDate(t.end));
+  const minDate = new Date(Math.min(...allStarts));
+  const maxDate = new Date(Math.max(...allEnds));
+  minDate.setDate(minDate.getDate() - 3);
+  maxDate.setDate(maxDate.getDate() + 7);
+  document.getElementById('range-start').value = fmtDate(minDate);
+  document.getElementById('range-end').value = fmtDate(maxDate);
+
+  renderAll();
+  const tmplName = name==='software'?'軟體開發':name==='marketing'?'行銷活動':'建設工程';
+  createSnapshot(`載入範本：${tmplName}`);
+}
+
+function clearAll() {
+  if(confirm('確定要清除所有任務嗎？')) {
+    createSnapshot('清除前的自動備份'); // 清除前先存一筆
+    tasks = [];
+    selectedTaskId = null;
+    renderAll();
+  }
+}
+
+// ===================== EXPORT / IMPORT =====================
+
+function openExportModal() {
+  document.getElementById('export-modal').classList.add('open');
+  document.getElementById('pdf-progress').classList.remove('show');
+}
+function closeExportModal() {
+  document.getElementById('export-modal').classList.remove('open');
+}
+
+// ── CSV ──
+function doExportCSV() {
+  if(!tasks.length) { showToast('⚠️ 尚無任務可匯出'); return; }
+  const BOM = '\uFEFF';
+  const header = ['任務名稱','開始日期','結束日期','工期(天)','進度(%)','負責人','分類','備註'];
+  const rows = tasks.map(t => {
+    const dur = diffDays(parseDate(t.start), parseDate(t.end)) + 1;
+    return [t.name, t.start, t.end, dur, t.progress||0,
+            t.assignee||'', t.category||'', t.notes||'']
+      .map(v => `"${String(v).replace(/"/g,'""')}"`)
+      .join(',');
+  });
+  const csv = BOM + [header.join(','), ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gantt-${fmtDate(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV 已下載');
+  closeExportModal();
+}
+
+// ── JSON ──
+function doExportJSON() {
+  if(!tasks.length) { showToast('⚠️ 尚無任務可匯出'); return; }
+  const data = {
+    meta: {
+      exported: new Date().toISOString(),
+      version: '2.0',
+      taskCount: tasks.length,
+      range: {
+        start: document.getElementById('range-start').value,
+        end: document.getElementById('range-end').value
+      }
+    },
+    tasks
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gantt-${fmtDate(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ JSON 已下載');
+  closeExportModal();
+}
+
+// ── JSON Import ──
+function doImportJSON() {
+  document.getElementById('import-file').click();
+}
+
+function importJSON() { doImportJSON(); }  // 保留舊名稱相容性
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(!data.tasks || !Array.isArray(data.tasks)) throw new Error('格式錯誤');
+      createSnapshot('匯入前的自動備份');
+      tasks = data.tasks;
+      if(data.meta?.range) {
+        document.getElementById('range-start').value = data.meta.range.start;
+        document.getElementById('range-end').value = data.meta.range.end;
+      }
+      renderAll();
+      showToast(`✅ 成功匯入 ${tasks.length} 個任務`);
+      closeExportModal();
+    } catch(err) {
+      showToast('❌ 無效的 JSON 格式');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── PDF ──
+async function doExportPDF() {
+  if(!tasks.length) { showToast('⚠️ 尚無任務可匯出'); return; }
+  if(typeof window.jspdf === 'undefined') {
+    showToast('⚠️ PDF 套件載入中，請稍後再試');
+    return;
+  }
+
+  const prog = document.getElementById('pdf-progress');
+  const progText = document.getElementById('pdf-progress-text');
+  prog.classList.add('show');
+  progText.textContent = '正在產生 PDF…';
+
+  await new Promise(r => setTimeout(r, 50)); // let UI update
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = 297, H = 210;
+    const margin = 14;
+
+    // ── 色彩工具 ──
+    const hexToRgb = hex => {
+      const r = parseInt(hex.slice(1,3),16);
+      const g = parseInt(hex.slice(3,5),16);
+      const b = parseInt(hex.slice(5,7),16);
+      return [r,g,b];
+    };
+
+    // ── 背景 ──
+    doc.setFillColor(10,10,15);
+    doc.rect(0, 0, W, H, 'F');
+
+    // ── 標題列 ──
+    doc.setFillColor(17,17,24);
+    doc.rect(0, 0, W, 18, 'F');
+    doc.setDrawColor(42,42,58);
+    doc.setLineWidth(0.3);
+    doc.line(0, 18, W, 18);
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(124,106,255);
+    doc.text('GANTT MASTER', margin, 12);
+
+    const exportTime = new Date().toLocaleString('zh-TW');
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(136,136,170);
+    doc.text(`產生時間：${exportTime}`, W - margin, 12, { align: 'right' });
+
+    // ── 統計摘要 ──
+    const total = tasks.length;
+    const done  = tasks.filter(t => (t.progress||0) >= 100).length;
+    const today = fmtDate(new Date());
+    const active = tasks.filter(t => t.start <= today && t.end >= today).length;
+    const avgProg = Math.round(tasks.reduce((s,t)=>s+(t.progress||0),0)/total);
+
+    const allStarts = tasks.map(t=>parseDate(t.start));
+    const allEnds   = tasks.map(t=>parseDate(t.end));
+    const projStart = new Date(Math.min(...allStarts));
+    const projEnd   = new Date(Math.max(...allEnds));
+    const projDays  = diffDays(projStart, projEnd) + 1;
+
+    const stats = [
+      ['總任務', total, '#7c6aff'],
+      ['進行中', active, '#ffb86a'],
+      ['已完成', done,   '#6affd0'],
+      ['整體進度', avgProg+'%', '#6ab8ff'],
+      ['專案天數', projDays, '#ff6a9a'],
+    ];
+    const statW = (W - margin*2) / stats.length;
+    const sy = 22;
+    stats.forEach(([label, val, color], i) => {
+      const x = margin + i * statW;
+      doc.setFillColor(24,24,31);
+      doc.roundedRect(x+1, sy, statW-2, 16, 2, 2, 'F');
+      const [r,g,b] = hexToRgb(color);
+      doc.setTextColor(r,g,b);
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(14);
+      doc.text(String(val), x + statW/2, sy+9, { align:'center' });
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(136,136,170);
+      doc.text(label, x + statW/2, sy+14, { align:'center' });
+    });
+
+    // ── 甘特圖區 ──
+    progText.textContent = '繪製甘特圖…';
+    await new Promise(r => setTimeout(r, 10));
+
+    const ganttY = 44;
+    const ganttH = 90;
+    const labelW_px = 52; // mm
+    const ganttBarZone = W - margin*2 - labelW_px;
+
+    // 計算時間範圍（使用設定或任務範圍）
+    const rangeStart = parseDate(document.getElementById('range-start').value) || projStart;
+    const rangeEnd   = parseDate(document.getElementById('range-end').value)   || projEnd;
+    const totalDays  = diffDays(rangeStart, rangeEnd) + 1;
+    const dayPx      = ganttBarZone / totalDays; // mm per day
+
+    // 標題列
+    doc.setFillColor(17,17,24);
+    doc.rect(margin, ganttY, W - margin*2, 8, 'F');
+    doc.setDrawColor(42,42,58);
+    doc.setLineWidth(0.2);
+    doc.line(margin, ganttY, W-margin, ganttY);
+    doc.line(margin, ganttY+8, W-margin, ganttY+8);
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7);
+    doc.setTextColor(136,136,170);
+    doc.text('TASK', margin+3, ganttY+5);
+
+    // 月份標記
+    let cur = new Date(rangeStart);
+    while(cur <= rangeEnd) {
+      const d = diffDays(rangeStart, cur);
+      const x = margin + labelW_px + d * dayPx;
+      if(cur.getDate() === 1 || d === 0) {
+        const label = cur.toLocaleDateString('zh-TW',{month:'short'});
+        doc.setFontSize(6);
+        doc.setTextColor(124,106,255);
+        doc.text(label, x+1, ganttY+5);
+        doc.setDrawColor(42,42,58);
+        doc.setLineWidth(0.2);
+        doc.line(x, ganttY, x, ganttY + ganttH);
+      }
+      // 週末淡底色
+      const dow = cur.getDay();
+      if(dow === 0 || dow === 6) {
+        doc.setFillColor(255,255,255);
+        doc.rect(x, ganttY+8, dayPx, ganttH-8, 'F');
+        // very subtle - 近乎透明用灰
+        doc.setFillColor(20,20,28);
+        doc.rect(x, ganttY+8, dayPx, ganttH-8, 'F');
+      }
+      cur = addDays(cur, 1);
+    }
+
+    // 今天線
+    const todayOff = diffDays(rangeStart, new Date());
+    if(todayOff >= 0 && todayOff <= totalDays) {
+      const tx = margin + labelW_px + todayOff * dayPx;
+      doc.setDrawColor(255,106,154);
+      doc.setLineWidth(0.5);
+      doc.line(tx, ganttY+8, tx, ganttY+ganttH);
+      doc.setFontSize(5);
+      doc.setTextColor(255,106,154);
+      doc.text('TODAY', tx+0.5, ganttY+12);
+    }
+
+    // 任務列
+    const rowH = Math.min((ganttH - 8) / tasks.length, 9);
+    tasks.forEach((t, i) => {
+      const ry = ganttY + 8 + i * rowH;
+
+      // 交替底色
+      if(i % 2 === 0) {
+        doc.setFillColor(16,16,22);
+        doc.rect(margin, ry, W - margin*2, rowH, 'F');
+      }
+
+      // 任務名稱
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(6);
+      doc.setTextColor(232,232,240);
+      const nameClip = t.name.length > 16 ? t.name.slice(0,15)+'…' : t.name;
+      doc.text(nameClip, margin+2, ry + rowH*0.65);
+
+      // 進度標記
+      doc.setFontSize(5);
+      doc.setTextColor(136,136,170);
+      doc.text((t.progress||0)+'%', margin+labelW_px-6, ry + rowH*0.65, {align:'right'});
+
+      // 甘特條
+      const barStart = diffDays(rangeStart, parseDate(t.start));
+      const barDays  = diffDays(parseDate(t.start), parseDate(t.end)) + 1;
+      if(barStart <= totalDays && barStart + barDays >= 0) {
+        const bx = margin + labelW_px + Math.max(0, barStart) * dayPx;
+        const bw = Math.min(barDays, totalDays - Math.max(0, barStart)) * dayPx;
+        const bh = rowH * 0.6;
+        const by = ry + rowH * 0.2;
+
+        // 背景條
+        const [r,g,b] = hexToRgb(t.color || '#7c6aff');
+        doc.setFillColor(r,g,b, 0.3);
+        doc.setFillColor(Math.floor(r*0.4), Math.floor(g*0.4), Math.floor(b*0.4));
+        doc.roundedRect(bx, by, bw, bh, 1, 1, 'F');
+
+        // 進度填色
+        const progW = bw * ((t.progress||0)/100);
+        if(progW > 0.5) {
+          doc.setFillColor(r,g,b);
+          doc.roundedRect(bx, by, progW, bh, 1, 1, 'F');
+        }
+      }
+    });
+
+    // 甘特框線
+    doc.setDrawColor(42,42,58);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, ganttY, W - margin*2, ganttH);
+
+    // 分隔線（label | timeline）
+    doc.line(margin+labelW_px, ganttY, margin+labelW_px, ganttY+ganttH);
+
+    // ── 任務明細表 ──
+    progText.textContent = '產生任務明細…';
+    await new Promise(r => setTimeout(r, 10));
+
+    const tableY = ganttY + ganttH + 6;
+    const tableH = H - tableY - margin;
+    if(tableH < 12) {
+      // 沒有空間就換頁
+      doc.addPage();
+      doc.setFillColor(10,10,15);
+      doc.rect(0,0,W,H,'F');
+    }
+    const ty = tableH < 12 ? margin : tableY;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(124,106,255);
+    doc.text('任務明細', margin, ty+5);
+
+    const cols = [
+      { label:'任務名稱', w:55 },
+      { label:'開始',     w:24 },
+      { label:'結束',     w:24 },
+      { label:'工期',     w:16 },
+      { label:'進度',     w:16 },
+      { label:'負責人',   w:28 },
+      { label:'分類',     w:28 },
+    ];
+    const totalColW = cols.reduce((s,c)=>s+c.w, 0);
+    // scale to fit
+    const scale = (W - margin*2) / totalColW;
+    cols.forEach(c => c.w *= scale);
+
+    const hdrY = ty + 8;
+    doc.setFillColor(24,24,31);
+    doc.rect(margin, hdrY, W-margin*2, 6, 'F');
+
+    let cx = margin;
+    cols.forEach(col => {
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(136,136,170);
+      doc.text(col.label, cx+2, hdrY+4);
+      cx += col.w;
+    });
+
+    doc.setDrawColor(42,42,58);
+    doc.setLineWidth(0.15);
+
+    const maxRows = Math.floor((H - hdrY - 8 - margin) / 5.5);
+    tasks.slice(0, maxRows).forEach((t, i) => {
+      const ry2 = hdrY + 6 + i * 5.5;
+      if(i % 2 === 0) {
+        doc.setFillColor(16,16,22);
+        doc.rect(margin, ry2, W-margin*2, 5.5, 'F');
+      }
+      const dur = diffDays(parseDate(t.start), parseDate(t.end)) + 1;
+      const vals = [
+        t.name.length>22 ? t.name.slice(0,21)+'…' : t.name,
+        t.start, t.end,
+        dur+'天',
+        (t.progress||0)+'%',
+        (t.assignee||'—').slice(0,8),
+        (t.category||'—').slice(0,8)
+      ];
+      cx = margin;
+      vals.forEach((v, vi) => {
+        const col = cols[vi];
+        // 進度欄上色
+        if(vi === 4) {
+          const p = t.progress||0;
+          const c = p>=100 ? [106,255,208] : p>0 ? [255,184,106] : [136,136,170];
+          doc.setTextColor(...c);
+        } else {
+          doc.setTextColor(232,232,240);
+        }
+        doc.setFont('helvetica', vi===0 ? 'bold' : 'normal');
+        doc.setFontSize(6);
+        doc.text(String(v), cx+2, ry2+3.8);
+        cx += col.w;
+      });
+
+      // 任務色條
+      const [r,g,b] = hexToRgb(t.color||'#7c6aff');
+      doc.setFillColor(r,g,b);
+      doc.rect(margin, ry2+0.5, 1.5, 4.5, 'F');
+
+      doc.setDrawColor(42,42,58);
+      doc.line(margin, ry2+5.5, W-margin, ry2+5.5);
+    });
+
+    if(tasks.length > maxRows) {
+      doc.setFontSize(7);
+      doc.setTextColor(136,136,170);
+      doc.text(`（另有 ${tasks.length-maxRows} 筆，請查看 CSV 完整資料）`,
+        margin, hdrY + 6 + maxRows * 5.5 + 4);
+    }
+
+    // 頁尾
+    doc.setFontSize(7);
+    doc.setTextColor(42,42,58);
+    doc.text('Generated by GANTT MASTER', W/2, H-4, { align:'center' });
+
+    doc.save(`gantt-report-${fmtDate(new Date())}.pdf`);
+    showToast('✅ PDF 已下載');
+    prog.classList.remove('show');
+    closeExportModal();
+
+  } catch(err) {
+    console.error(err);
+    showToast('❌ PDF 產生失敗：' + err.message);
+    prog.classList.remove('show');
+  }
+}
+
+// 舊函式相容
+function exportCSV()  { doExportCSV(); }
+function exportJSON() { doExportJSON(); }
+function printGantt() { window.print(); }
+
+function download(filename, dataURL) {
+  const a = document.createElement('a');
+  a.href = dataURL; a.download = filename; a.click();
+}
+
+// ===================== AUTOSAVE & HISTORY =====================
+const STORAGE_KEY = 'gantt_master_current';
+const HISTORY_KEY = 'gantt_master_history';
+const MAX_HISTORY = 100;
+let saveTimer = null;
+let lastSavedHash = '';
+let histPage = 0;
+let histFilter = 'all';
+const HIST_PAGE_SIZE = 10;
+
+function getStateHash() {
+  return JSON.stringify({ tasks, range: {
+    start: document.getElementById('range-start').value,
+    end: document.getElementById('range-end').value
+  }});
+}
+
+function autoSave() {
+  // 只靜默儲存當前狀態到 localStorage，不建立歷史快照
+  clearTimeout(saveTimer);
+  setSaveStatus('saving');
+  saveTimer = setTimeout(() => {
+    const state = getStateHash();
+    if(state === lastSavedHash) { setSaveStatus('saved'); return; }
+    lastSavedHash = state;
+    try {
+      const snapshot = {
+        tasks: JSON.parse(JSON.stringify(tasks)),
+        range: {
+          start: document.getElementById('range-start').value,
+          end: document.getElementById('range-end').value
+        },
+        ts: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    } catch(e) { console.warn('Storage error:', e); }
+    setSaveStatus('saved');
+  }, 600);
+}
+
+function createSnapshot(label, named = false, note = '') {
+  // 建立一筆歷史快照（智慧合併：同 label 且 60 秒內 → 覆蓋最新一筆而非新增）
+  const snapshot = {
+    tasks: JSON.parse(JSON.stringify(tasks)),
+    range: {
+      start: document.getElementById('range-start').value,
+      end: document.getElementById('range-end').value
+    },
+    ts: Date.now(),
+    label,
+    note: note || '',
+    named: !!named,
+    taskCount: tasks.length,
+    completedCount: tasks.filter(t => (t.progress||0) >= 100).length,
+    avgProgress: tasks.length ? Math.round(tasks.reduce((s,t) => s+(t.progress||0), 0) / tasks.length) : 0
+  };
+
+  try {
+    let history = loadHistory();
+    const MERGE_WINDOW = 60 * 1000; // 60 秒內同標籤合併
+    const recent = history[0];
+    if (!named && recent && !recent.named &&
+        recent.label === label &&
+        (snapshot.ts - recent.ts) < MERGE_WINDOW) {
+      // 覆蓋最近那筆（同類操作短時間內只保留最新）
+      history[0] = snapshot;
+    } else {
+      // 完全相同內容不重複記錄
+      if(recent && JSON.stringify(recent.tasks) === JSON.stringify(snapshot.tasks)) return;
+      history.unshift(snapshot);
+      if(history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+    }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch(e) {
+    try {
+      let history = loadHistory();
+      const lastNonNamed = [...history].reverse().findIndex(h => !h.named);
+      if(lastNonNamed >= 0) history.splice(history.length - 1 - lastNonNamed, 1);
+      history.unshift(snapshot);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch(e2) { console.warn('Storage full:', e2); }
+  }
+  renderHistoryList();
+}
+
+function buildAutoLabel() {
+  if(!tasks.length) return '（空白專案）';
+  const names = tasks.slice(0,2).map(t=>t.name).join('、');
+  return names + (tasks.length > 2 ? ` 等 ${tasks.length} 項任務` : '');
+}
+
+function setSaveStatus(state) {
+  const el = document.getElementById('save-status');
+  const txt = document.getElementById('save-text');
+  el.className = 'save-status ' + state;
+  if(state === 'saving') txt.textContent = '儲存中...';
+  else if(state === 'saved') {
+    const now = new Date();
+    txt.textContent = `已儲存 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  }
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const snapshot = JSON.parse(raw);
+    tasks = snapshot.tasks || [];
+    if(snapshot.range) {
+      document.getElementById('range-start').value = snapshot.range.start;
+      document.getElementById('range-end').value = snapshot.range.end;
+    }
+    lastSavedHash = getStateHash();
+    setSaveStatus('saved');
+    return true;
+  } catch { return false; }
+}
+
+function restoreFromHistory(idx) {
+  // idx is index in filtered+paged view; find real index
+  const history = getFilteredHistory();
+  const snap = history[idx];
+  if(!snap) return;
+  if(!confirm(`確定要還原至「${snap.label}」（${fmtHistoryTime(snap.ts)}）？\n目前未儲存的變更將被覆蓋。`)) return;
+  // 還原前先備份當前狀態
+  createSnapshot('還原前的自動備份');
+  tasks = JSON.parse(JSON.stringify(snap.tasks));
+  if(snap.range) {
+    document.getElementById('range-start').value = snap.range.start;
+    document.getElementById('range-end').value = snap.range.end;
+  }
+  renderAll();
+  showToast(`✓ 已還原至 ${fmtHistoryTime(snap.ts)}`);
+}
+
+function deleteHistory(idx) {
+  const filtered = getFilteredHistory();
+  const snap = filtered[idx];
+  const history = loadHistory();
+  const realIdx = history.findIndex(h => h.ts === snap.ts);
+  if(realIdx >= 0) history.splice(realIdx, 1);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistoryList();
+}
+
+function clearHistory() {
+  if(confirm('確定要清除所有歷史紀錄嗎？\n（命名快照也會一併刪除）')) {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistoryList();
+  }
+}
+
+// ---- Named snapshots ----
+function saveNamedSnapshot() {
+  document.getElementById('snapshot-name').value = '';
+  document.getElementById('snapshot-note').value = '';
+  document.getElementById('snapshot-modal').classList.add('open');
+  setTimeout(() => document.getElementById('snapshot-name').focus(), 100);
+}
+function closeSnapshotModal() {
+  document.getElementById('snapshot-modal').classList.remove('open');
+}
+function confirmNamedSnapshot() {
+  const name = document.getElementById('snapshot-name').value.trim();
+  if(!name) { alert('請輸入快照名稱'); return; }
+  const note = document.getElementById('snapshot-note').value.trim();
+  createSnapshot(name, true, note);
+  closeSnapshotModal();
+  showToast(`📌 已建立快照「${name}」`);
+}
+
+// ---- Filter & pagination ----
+function setHistFilter(f) {
+  histFilter = f;
+  histPage = 0;
+  ['all','named','auto'].forEach(x => {
+    document.getElementById('hist-filter-'+x)?.classList.toggle('active', x===f);
+  });
+  renderHistoryList();
+}
+
+function getFilteredHistory() {
+  const all = loadHistory();
+  const q = (document.getElementById('history-search')?.value || '').toLowerCase();
+  return all.filter(h => {
+    if(histFilter === 'named' && !h.named) return false;
+    if(histFilter === 'auto' && h.named) return false;
+    if(q && !h.label.toLowerCase().includes(q) && !(h.note||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function fmtHistoryTime(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  const isYest = d.toDateString() === yesterday.toDateString();
+  const time = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
+  if(isToday) return `今天 ${time}`;
+  if(isYest) return `昨天 ${time}`;
+  return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${time}`;
+}
+
+function renderHistoryList() {
+  const el = document.getElementById('history-list');
+  const pageEl = document.getElementById('history-pagination');
+  const countEl = document.getElementById('history-count-label');
+  if(!el) return;
+
+  const filtered = getFilteredHistory();
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / HIST_PAGE_SIZE);
+  if(histPage >= totalPages) histPage = Math.max(0, totalPages - 1);
+
+  if(countEl) countEl.textContent = `共 ${total} 筆 / 全部 ${loadHistory().length} 筆`;
+
+  if(!total) {
+    el.innerHTML = `<div class="history-empty"><div class="history-empty-icon">📂</div>${
+      histFilter !== 'all' || document.getElementById('history-search')?.value
+        ? '沒有符合條件的紀錄' : '尚無儲存紀錄<br><span style="font-size:11px">每次修改後會自動儲存</span>'
+    }</div>`;
+    if(pageEl) pageEl.innerHTML = '';
+    return;
+  }
+
+  const start = histPage * HIST_PAGE_SIZE;
+  const page = filtered.slice(start, start + HIST_PAGE_SIZE);
+
+  el.innerHTML = page.map((snap, pi) => {
+    const i = start + pi;
+    const isNamed = snap.named;
+    const dur = snap.tasks.length ? (() => {
+      const starts = snap.tasks.map(t=>t.start).sort();
+      const ends = snap.tasks.map(t=>t.end).sort();
+      const d = Math.round((new Date(ends[ends.length-1]) - new Date(starts[0]))/86400000)+1;
+      return `${d}天`;
+    })() : '—';
+    return `
+    <div class="history-item" style="${isNamed ? 'border-color:rgba(255,184,106,0.4);background:rgba(255,184,106,0.04)' : ''}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        ${isNamed ? '<span style="font-size:10px;background:rgba(255,184,106,0.2);color:#ffb86a;border-radius:3px;padding:1px 5px;font-weight:700">📌 命名</span>' : '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,0.05);border-radius:3px;padding:1px 5px">自動</span>'}
+        <div class="history-item-time" style="margin:0">${fmtHistoryTime(snap.ts)}</div>
+      </div>
+      <div class="history-item-desc" style="font-weight:${isNamed?'600':'400'}">${snap.label}</div>
+      ${snap.note ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;font-style:italic">${snap.note}</div>` : ''}
+      <div style="display:flex;gap:12px;margin-top:5px;flex-wrap:wrap">
+        <div class="history-item-meta">📋 ${snap.taskCount} 任務</div>
+        <div class="history-item-meta">✅ ${snap.completedCount||0} 完成</div>
+        <div class="history-item-meta">📈 ${snap.avgProgress||0}% 進度</div>
+        <div class="history-item-meta">📅 ${dur}</div>
+      </div>
+      <div class="history-actions">
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="restoreFromHistory(${i})">↩ 還原</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="previewHistory(${i})">👁 預覽</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="deleteHistory(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Pagination
+  if(pageEl) {
+    if(totalPages <= 1) { pageEl.innerHTML = ''; return; }
+    let pgHtml = '';
+    if(histPage > 0) pgHtml += `<button class="zoom-btn" onclick="setHistPage(${histPage-1})">‹</button>`;
+    for(let p = 0; p < totalPages; p++) {
+      if(totalPages > 8 && Math.abs(p - histPage) > 2 && p !== 0 && p !== totalPages-1) {
+        if(p === 1 || p === totalPages-2) pgHtml += `<span style="color:var(--text-dim);font-size:12px;padding:0 2px">…</span>`;
+        continue;
+      }
+      pgHtml += `<button class="zoom-btn ${p===histPage?'active':''}" onclick="setHistPage(${p})">${p+1}</button>`;
+    }
+    if(histPage < totalPages-1) pgHtml += `<button class="zoom-btn" onclick="setHistPage(${histPage+1})">›</button>`;
+    pageEl.innerHTML = pgHtml;
+  }
+}
+
+function setHistPage(p) {
+  histPage = p;
+  renderHistoryList();
+  document.getElementById('history-list').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function previewHistory(idx) {
+  const filtered = getFilteredHistory();
+  const snap = filtered[idx];
+  if(!snap) return;
+  const names = snap.tasks.map(t => `• ${t.name}（${t.start} → ${t.end}，${t.progress||0}%）`).join('\n');
+  alert(`📸 快照預覽：${snap.label}\n時間：${fmtHistoryTime(snap.ts)}\n\n任務列表：\n${names || '（無任務）'}`);
+}
+
+function exportHistoryJSON() {
+  const history = loadHistory();
+  if(!history.length) { alert('目前沒有歷史紀錄'); return; }
+  const data = { meta: { exported: new Date().toISOString(), count: history.length }, history };
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+  a.download = `gantt-history-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function showToast(msg) {
+  const el = document.getElementById('restore-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ===================== KEYBOARD =====================
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') { closeModal(); closeSnapshotModal(); }
+  if(e.key === 'Delete' && selectedTaskId && !document.getElementById('task-modal').classList.contains('open')) {
+    deleteTask(selectedTaskId);
+  }
+});
+
+// ===================== MOBILE =====================
+let mobileView = 'gantt';
+
+function isMobile() { return window.innerWidth <= 768; }
+
+// ── Bottom Sheet 核心 ──
+const SHEET_TITLES = {
+  tasks: '📋 任務列表',
+  stats: '📈 統計概覽',
+  settings: '⚙️ 顯示設定',
+  history: '🕐 版本歷史'
+};
+
+// 取得各分頁的 HTML 內容（直接從 sidebar DOM 複製）
+function getSheetContent(view) {
+  const src = document.getElementById('tab-' + view);
+  if (!src) return '<p style="color:var(--text-dim);padding:16px">無內容</p>';
+  // 克隆節點，套上 padding
+  const clone = src.cloneNode(true);
+  clone.style.display = 'block';
+  clone.style.padding = '12px 16px 20px';
+  return clone.outerHTML;
+}
+
+function openSheet(view) {
+  const sheet = document.getElementById('bottom-sheet');
+  const backdrop = document.getElementById('sheet-backdrop');
+  const body = document.getElementById('sheet-body');
+  const title = document.getElementById('sheet-title');
+
+  // 注入對應分頁的內容
+  title.textContent = SHEET_TITLES[view] || view;
+  body.innerHTML = getSheetContent(view);
+
+  // 如果是統計頁，重新跑渲染
+  if (view === 'stats') {
+    updateStats();
+    // 把新渲染結果放進 sheet-body
+    const statsEl = body.querySelector('#stats-content');
+    if (statsEl) {
+      const original = document.getElementById('stats-content');
+      if (original) statsEl.innerHTML = original.innerHTML;
+    }
+    // 再跑一次讓 statsEl 有內容
+    const tempBody = body;
+    const origEl = document.getElementById('stats-content');
+    if(origEl) {
+      updateStats();
+      const sc = body.querySelector('[id="stats-content"]');
+      if(sc) sc.innerHTML = origEl.innerHTML;
+    }
+  }
+  if (view === 'history') {
+    renderHistoryList();
+    const origHist = document.getElementById('history-list');
+    const sheetHist = body.querySelector('[id="history-list"]');
+    if(origHist && sheetHist) sheetHist.innerHTML = origHist.innerHTML;
+  }
+  if (view === 'tasks') {
+    const origList = document.getElementById('task-list');
+    const sheetList = body.querySelector('[id="task-list"]');
+    if(origList && sheetList) sheetList.innerHTML = origList.innerHTML;
+  }
+
+  backdrop.classList.add('open');
+  sheet.classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('bottom-sheet').classList.remove('open');
+  document.getElementById('sheet-backdrop').classList.remove('open');
+  // 把底部導覽恢復到甘特圖 active
+  ['gantt','tasks','stats','settings','history'].forEach(v => {
+    document.getElementById('mob-tab-'+v)?.classList.toggle('active', v==='gantt');
+  });
+  mobileView = 'gantt';
+}
+
+function mobileSwitchView(view) {
+  if (!isMobile()) return;
+
+  // 更新 tab 高亮
+  ['gantt','tasks','stats','settings','history'].forEach(v => {
+    document.getElementById('mob-tab-'+v)?.classList.toggle('active', v===view);
+  });
+
+  if (view === 'gantt') {
+    // 關閉抽屜，回到甘特圖
+    closeSheet();
+    mobileView = 'gantt';
+  } else {
+    mobileView = view;
+    openSheet(view);
+  }
+}
+
+// 桌面版 resize 重置
+window.addEventListener('resize', () => {
+  if (!isMobile()) {
+    closeSheet();
+  }
+  // 重繪讓 labelW 重新計算
+  renderGantt();
+});
+
+// ===================== START =====================
+function init() {
+  buildColorPicker();
+  setDefaultDates();
+  document.getElementById('hist-filter-all')?.classList.add('active');
+  // 手機預設縮放為「週」，桌面為「日」
+  if(isMobile()) {
+    zoom = 'week';
+    dayWidth = 14;
+    document.getElementById('zoom-day')?.classList.remove('active');
+    document.getElementById('zoom-week')?.classList.add('active');
+    document.getElementById('mob-zoom-day')?.classList.remove('active');
+    document.getElementById('mob-zoom-week')?.classList.add('active');
+  }
+  const restored = loadFromStorage();
+  if(restored && tasks.length > 0) {
+    renderAll();
+    showToast(`✓ 已自動還原上次工作（${tasks.length} 個任務）`);
+  } else {
+    loadTemplate('software');
+  }
+}
+init();
+</script>
+</body>
+</html>
